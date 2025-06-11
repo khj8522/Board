@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<th:block th:replace="~{/layout/basic :: setContent(~{this::content} )}">
+
+    <th:block th:fragment="content">
+
+        <h1 class="mt-4">Board Read Page</h1>
+
+        <div class="form-group">
+            <label >Bno</label>
+            <input type="text" class="form-control" name="gno" th:value="${dto.bno}" readonly >
+        </div>
+
+        <div class="form-group">
+            <label >Title</label>
+            <input type="text" class="form-control" name="title" th:value="${dto.title}" readonly >
+        </div>
+        <div class="form-group">
+            <label >Content</label>
+            <textarea class="form-control" rows="5" name="content" readonly>[[${dto.content}]]</textarea>
+        </div>
+        <div class="form-group">
+            <label >Writer</label>
+            <input type="text" class="form-control" name="writer" th:value="${dto.writerName}" readonly>
+        </div>
+        <div class="form-group">
+            <label >RegDate</label>
+            <input type="text" class="form-control" name="regDate" th:value="${#temporals.format(dto.regDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
+        </div>
+        <div class="form-group">
+            <label >ModDate</label>
+            <input type="text" class="form-control" name="modDate" th:value="${#temporals.format(dto.modDate, 'yyyy/MM/dd HH:mm:ss')}" readonly>
+        </div>
+
+        <a th:href="@{/board/modify(bno = ${dto.bno}, page=${requestDTO.page}, type=${requestDTO.type}, keyword =${requestDTO.keyword})}">
+            <button type="button" class="btn btn-primary">Modify</button>
+        </a>
+
+        <a th:href="@{/board/list(page=${requestDTO.page} , type=${requestDTO.type}, keyword =${requestDTO.keyword})}">
+            <button type="button" class="btn btn-info">List</button>
+        </a>
+
+        <div >
+            <div class="mt-4">
+                <h5 ><span class="badge badge-info addReply">Add Reply</span> </h5>
+                <h5 ><span class="badge badge-secondary replyCount"> Reply Count  [[${dto.replyCount}]]</span> </h5>
+            </div>
+            <div class="list-group replyList">
+
+            </div>
+        </div>
+
+
+
+        <div class="modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Modal Title</h5>
+
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <input class="form-control"  type="text" name="replyText" placeholder="Reply Text...">
+                        </div>
+                        <div class="form-group">
+                            <input class="form-control"  type="text" name="replyer" placeholder="Replyer">
+                            <input type="hidden" name="rno" >
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger replyRemove">삭제</button>
+                        <button type="button" class="btn btn-warning replyModify">수정</button>
+                        <button type="button" class="btn btn-primary replySave">저장</button>
+                        <button type="button" class="btn btn-outline-secondary replyClose" data-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <script th:inline="javascript">
+            $(document).ready(function() {
+
+                var bno = [[${dto.bno}]];
+
+                var listGroup  = $(".replyList");
+
+                $(".replyCount").click(function(){
+
+                    $.getJSON('/replies/board/'+bno, function(arr){
+
+                        console.log(arr);
+
+                    })//end getJSON
+
+                })//end click
+
+
+                //댓글이 추가될 영역
+                var listGroup  = $(".replyList");
+
+//날짜 처리를 위한 함수
+                function formatTime(str){
+                    var date = new Date(str);
+
+                    return date.getFullYear() + '/' +
+                        (date.getMonth() + 1) + '/' +
+                        date.getDate() + ' ' +
+                        date.getHours() + ':' +
+                        date.getMinutes();
+                }
+
+//특정한 게시글의 댓글을 처리하는 함수
+                function loadJSONData() {
+                    $.getJSON('/replies/board/'+bno, function(arr){
+
+                        console.log(arr);
+
+                        var str ="";
+
+                        $('.replyCount').html(" Reply Count  " + arr.length);
+
+                        $.each(arr, function(idx, reply){
+                            console.log(reply);
+                            // 문자열을 연결시키기 위해 표시할 텍스트에 +를 붙임
+                            str += '    <div class="card-body" data-rno="'+reply.rno+'"><b>'+reply.rno +'</b>';
+                            str += '    <h5 class="card-title">'+reply.text+'</h5>';
+                            str += '    <h6 class="card-subtitle mb-2 text-muted">'+reply.replyer+'</h6>';
+                            str += '    <p class="card-text">'+ formatTime(reply.regDate) +'</p>';
+                            str += '    </div>';
+                        })
+
+                        listGroup.html(str);
+
+                    });
+                }
+
+                $(".replyCount").click(function(){
+
+                    loadJSONData();
+                })//end click
+
+                //모달 창 -- 댓글 작성 시
+                var modal = $('.modal');
+
+                $(".addReply").click(function () {
+
+                    modal.modal('show');
+
+                    //댓글 입력하는 부분 초기화 시키기
+                    $('input[name="replyText"]').val(''); // '' 으로 초기화(빈칸)
+                    $('input[name="replyer"]').val('');
+
+
+                    $(".modal-footer .btn").hide(); //모달 내의 모든 버튼을 안 보이도록
+                    $(".replySave, .replyClose").show(); //필요한 버튼들만 보이도록
+
+                });
+                // html 내의 모달코드에 버튼을 만들어 놓음 -> 등록
+                $(".replySave").click(function() {
+
+                    var reply = { // 변수 reply 에
+                        bno: bno,
+                        text: $('input[name="replyText"]').val(), //모달의 replyText 값 저장
+                        replyer: $('input[name="replyer"]').val() //모달의 replyer 값 저장
+                    }
+                    console.log(reply);
+                    $.ajax({
+                        url: '/replies/',
+                        method: 'post',
+                        data:  JSON.stringify(reply), // JSON 파일로 만듬
+                        contentType: 'application/json; charset=utf-8', // 보낼 데이터 타입
+                        dataType: 'json', // 받을 데이터 타입
+                        success: function(data){ // 성공시 서버에서 rno를 응답해줌
+                            console.log(data);
+
+                            var newRno = parseInt(data);
+
+                            alert(newRno +"번 댓글이 등록되었습니다.")
+                            modal.modal('hide');
+                            loadJSONData();
+                        }
+                    })
+                });
+                // replyCount를 클릭해 동적으로 해당 화면이 나오므로 그냥 click이 아닌 on을 사용해야됨
+                $('.replyList').on("click", ".card-body", function(){ //replyList의 클래스안의 card-body를 클릭시
+
+                    var rno = $(this).data("rno"); // date-rno 값을 가져옴
+
+                    $("input[name='replyText']").val( $(this).find('.card-title').html());
+                    // input태그의 name이 replyText인 요소에 현재 html내의 card-title 클래스의 값을 삽입
+                    $("input[name='replyer']").val( $(this).find('.card-subtitle').html());
+                    $("input[name='rno']").val(rno);
+                    // 아까 가져온 rno값을 넣음(수정, 삭제시 필요)
+
+                    $(".modal-footer .btn").hide();
+                    $(" .replyModify,.replyRemove, .replyClose").show();
+                    // 필요한 버튼 보이게
+
+                    modal.modal('show');
+
+                });
+
+                $(".replyRemove").on("click", function(){
+
+                    var rno = $("input[name='rno']").val();
+                    // 모달 창에서 해당 버튼을 클릭하기에 보이는 댓글 번호 hidden처리되어 있음
+
+                    $.ajax({
+                        url: '/replies/' + rno,
+                        method: 'delete',
+
+                        success: function(result){ // 서버에서 반환된 값(responseEntity)
+                            console.log("result: " + result);
+                            if(result ==='success'){
+                                alert("댓글이 삭제되었습니다");
+                                modal.modal('hide');
+                                loadJSONData();
+                            }
+                        }
+                    })
+                });
+
+                $(".replyModify").click(function() {
+
+                    var rno = $("input[name='rno']").val();
+
+                    var reply = {
+                        rno: rno,
+                        bno: bno,
+                        text: $('input[name="replyText"]').val(),
+                        replyer: $('input[name="replyer"]').val()
+                    }
+
+                    console.log(reply);
+                    $.ajax({
+                        url: '/replies/' + rno,
+                        method: 'put', // put은 전체수정 patch는 부분 수정
+                        data:  JSON.stringify(reply),
+                        contentType: 'application/json; charset=utf-8',
+                        success: function(result){
+
+                            console.log("RESULT: " + result); // 서버에서 보낸 응답
+
+                            if(result ==='success'){
+                                alert("댓글이 수정되었습니다");
+                                modal.modal('hide');
+                                loadJSONData();
+                            }
+                        }
+                    });
+                });
+
+
+
+            });
+        </script>
+
+
+    </th:block>
+
+</th:block>
+
